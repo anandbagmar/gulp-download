@@ -11,7 +11,7 @@ module.exports = function (urls) {
   });
 
 
-  var files = typeof urls === 'string' ? [urls] : urls;
+  var files = (typeof urls === 'string' || typeof urls === 'object') ? [urls] : urls;
   var downloadCount = 0;
 
 
@@ -23,6 +23,9 @@ module.exports = function (urls) {
       fileName = url.file;
       url = url.url;
     } else {
+      if (!url.match(/(http|https):/gi)) {
+        url = "http:" + url;
+      }
       fileName = url.split('/').pop();
     }
     progress(
@@ -30,7 +33,7 @@ module.exports = function (urls) {
       {throttle: 1000, delay: 1000}
     )
       .on('progress', function (state) {
-        process.stdout.write(' ' + state.percent + '%');
+        process.stdout.write(' ' + Math.round(state.percentage * 100) +'%');
       })
       .on('data', function () {
         if (firstLog) {
@@ -40,7 +43,11 @@ module.exports = function (urls) {
       });
 
     function downloadHandler(err, res, body) {
-      var file = new gutil.File({path: fileName, contents: new Buffer(body)});
+      var file;
+      if (err) {
+        return stream.emit('error', err);
+      }
+      file = new gutil.File({path: fileName, contents: new Buffer(body)});
       stream.queue(file);
 
       process.stdout.write(' ' + col.green('Done\n'));
